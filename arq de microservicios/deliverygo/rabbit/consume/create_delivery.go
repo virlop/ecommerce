@@ -148,3 +148,33 @@ func processCreateDelivery(newMessage *CreateDeliveryMessage, logger *log.Entry)
 
 	logger.Info("Delivery creado para la orden: ", newMessage.OrderId)
 }
+
+func ConsumeOrderCreatedEvents(ctx ...interface{}) {
+    msgs := rabbit.GetChannel(ctx...).Consume(
+        "order_payment_defined_queue", // Nombre de la cola
+        "",                            // Nombre del consumidor
+        true,                          // Auto-Ack
+        false,
+        false,
+        false,
+        nil,
+    )
+
+    for msg := range msgs {
+        eventData := struct {
+            DeliveryId string `json:"deliveryId"`
+            OrderId    string `json:"orderId"`
+            UserId     string `json:"userId"`
+        }{}
+
+        if err := json.Unmarshal(msg.Body, &eventData); err != nil {
+            log.Get(ctx...).Error("Failed to unmarshal message: ", err)
+            continue
+        }
+
+        event := NewConfirmDeliveryEvent(eventData.DeliveryId, eventData.OrderId, eventData.UserId)
+        if _, err := InsertDeliveryEvent(event, ctx...); err != nil {
+            log.Get(ctx...).Error("Failed to insert delivery event: ", err)
+        }
+    }
+}

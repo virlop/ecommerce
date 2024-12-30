@@ -131,30 +131,40 @@ func FindDeliveryEventsByDeliveryId(deliveryId string, deps ...interface{}) ([]*
 
 	return events, nil
 }
-func FindDeliveryByOrderId(orderId string, ctx ...interface{}) ([]*Event, error) {
+func FindDeliveryIdByOrderId(orderId string, ctx ...interface{}) (string, error) {
 	var collection, err = dbCollection(ctx...)
 	if err != nil {
 		log.Get(ctx...).Error(err)
-		return nil, err
+		return "", err
 	}
 
+	// Filtrar por orderId
 	filter := bson.M{"orderId": orderId}
 	cur, err := collection.Find(context.Background(), filter, nil)
 	if err != nil {
 		log.Get(ctx...).Error(err)
-		return nil, err
+		return "", err
 	}
 	defer cur.Close(context.Background())
 
-	events := []*Event{}
+	// Buscar el deliveryId asociado
+	var deliveryId string
 	for cur.Next(context.Background()) {
 		event := &Event{}
 		if err := cur.Decode(event); err != nil {
 			log.Get(ctx...).Error(err)
-			return nil, err
+			return "", err
 		}
-		events = append(events, event)
+		// Asignar el deliveryId si existe
+		deliveryId = event.DeliveryId
+		break
+		// Solo necesitamos un `deliveryId`, salimos del bucle
 	}
 
-	return events, nil
+	// Verificar si se encontró un deliveryId
+	if deliveryId == "" {
+		return "", fmt.Errorf("no deliveryId found for orderId: %s", orderId)
+	}
+
+	return deliveryId, nil
 }
