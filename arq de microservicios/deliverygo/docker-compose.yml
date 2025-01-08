@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  deliverygo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - MONGO_URL=mongodb://mongodb:27017/delivery
+    depends_on:
+      - rabbitmq
+      - mongodb
+    networks:
+      - ecommerce-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    networks:
+      - ecommerce-network
+
+  mongodb:
+    image: mongo:5.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    networks:
+      - ecommerce-network
+    volumes:
+      - mongodb_data:/data/db
+
+networks:
+  ecommerce-network:
+
+volumes:
+  mongodb_data:
